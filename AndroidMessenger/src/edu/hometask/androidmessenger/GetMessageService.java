@@ -23,12 +23,13 @@ import com.google.gson.JsonSyntaxException;
  
 public class GetMessageService extends Service 
 {
+	private MainActivity ma;
+	private MyMessage message;
   NotificationManager nm;
   private Socket s;
   private DataInputStream dis;
   private DataOutputStream dos;
-  private MyMessage message;
-  private String IPServer, str;
+  private String str;
   private Gson gson;
   
 public String getStr()
@@ -41,34 +42,12 @@ public void setStr(String str)
 	this.str = str;
 }
 
-/*@Override
-public void onDestroy()
-{
-	
-	if(myMessage==null) myMessage = new MyMessage();
-	
-	myMessage.setFrom(userName);
-	myMessage.setText("exit");
-	myMessage.setTo("server");
-	
-	new Thread(new SendThread(MainActivity.this,s,myMessage)).start();
-			
-		Log.d("MyTag", "String after Send evit to server");
-	
-	
-	startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, userName));
-	
-	if(hMain!=null) hMain.removeCallbacksAndMessages(null);//очищает отправленные с задержкой сообщения
-	super.onDestroy();
-}*/
-
 @Override
   public void onCreate() 
   {
     super.onCreate();
     
     nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-    
     message = new MyMessage();
     gson = new Gson();
     str=null;
@@ -78,16 +57,13 @@ public void onDestroy()
  
   public int onStartCommand(Intent intent, int flags, int startId)
   {
-	  
-	//  String tmpS = intent.getStringExtra(MainActivity.StoService);
-	  
-	//  dis = gson.fromJson(tmpS, DataInputStream.class);
-	  
-		message.setFrom(intent.getStringExtra(MainActivity.StoService));//TODO типа поймали username из мейна
+	  ma = gson.fromJson(intent.getStringExtra(MainActivity.StoService), MainActivity.class);
+			  
+		message.setFrom(ma.getUserName());//TODO типа поймали username из мейна
 		message.setTo("server");
 		message.setText("regusername");
 		
-		new Thread(new ServiceThread(this, message)).start(); 
+		new Thread(new ServiceThread(this, ma,message)).start(); 
 		
 	  
     //return super.onStartCommand(intent, flags, startId);

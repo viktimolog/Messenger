@@ -1,0 +1,1 @@
+java -jar JavaBot.jar 192.168.1.104 first

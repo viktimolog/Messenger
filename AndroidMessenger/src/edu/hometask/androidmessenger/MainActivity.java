@@ -39,6 +39,7 @@ public class MainActivity extends Activity
 {
 public static final int CODE_1 = 173726;
 	
+	public static String addressServer;
 	public static final int HANDLER_KEYSERVER =1;
 	public static final int HANDLER_KEYUSERNAME=2;
 	public static final String SPKEY = "SPKEY";
@@ -103,7 +104,7 @@ public static final int CODE_1 = 173726;
 					ma.myMessage.setText("regusername");
 				    
 				    //Первое подключение к серверу
-				    new Thread(new CreateSocketThread(ma.myMessage)).start(); //TODO переделать: куча параметров нах
+				    new Thread(new CreateSocketThread(ma)).start(); //TODO переделать: куча параметров нах
 				}
 			}
 			if(msg.what==MainActivity.HANDLER_KEYSEND)
@@ -165,7 +166,7 @@ public static final int CODE_1 = 173726;
 				if(ma!=null)
 				{
 					ma.s = (Socket) msg.obj;
-					new Thread(new GetThread(ma, ma.s)).start(); // TODO много параметров 
+					new Thread(new GetThread(ma)).start(); // TODO много параметров 
 				}
 			}
 		}
@@ -267,12 +268,13 @@ public static final int CODE_1 = 173726;
 		myMessage.setText("exit");
 		myMessage.setTo("server");
 		
-		new Thread(new SendThread(MainActivity.this,s,myMessage)).start();
+		new Thread(new SendThread(MainActivity.this)).start();
 				
 			Log.d("MyTag", "String after Send evit to server");
 		
 		
-		startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, userName));
+		//startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, userName));
+		startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, gson.toJson(MainActivity.this)));
 		
 		if(hMain!=null) hMain.removeCallbacksAndMessages(null);//очищает отправленные с задержкой сообщения
 		super.onDestroy();
@@ -285,6 +287,12 @@ public static final int CODE_1 = 173726;
         setContentView(R.layout.activity_main);
         
         //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        
+        IPServer = "192.168.1.104";
+        
+        s=null;
+        myMessage=new MyMessage();
+        gson = new Gson();
         
         //userName = "second";
         
@@ -334,14 +342,9 @@ public static final int CODE_1 = 173726;
 				
 				//myMessage.setTo(userName);//чтобы сам себе отправлял userName
 				
-				new Thread(new SendThread(MainActivity.this,s,myMessage)).start();
+				new Thread(new SendThread(MainActivity.this)).start();
 			}
 		});
-        
-        IPServer="";
-        s=null;
-        myMessage=new MyMessage();
-        gson = new Gson();
         
   /*      View view = View.inflate(this, R.layout.serverchoice, null);
 	    AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
@@ -446,7 +449,7 @@ public static final int CODE_1 = 173726;
 			
 			arrListHistory.add(gson.fromJson(newMessage, MyMessage.class).getText());
 			
-		    new Thread(new CreateSocketThread(myMessage)).start(); 
+		    new Thread(new CreateSocketThread(this)).start(); 
 	    	
 	    }
 	    

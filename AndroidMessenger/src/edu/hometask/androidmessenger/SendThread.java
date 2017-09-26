@@ -13,25 +13,20 @@ import android.widget.Toast;
 
 public class SendThread  implements Runnable
 {
-	private MyMessage message;
 	private DataOutputStream dos;
-	private Socket s;
 	private Gson gson;
 	private MainActivity ma;
 	
-	public SendThread(MainActivity ma, Socket s, MyMessage message)
+	public SendThread(MainActivity ma)
 	{
 		this.ma = ma;
-//		this.dos = dos;
-		this.message = message;
-		this.s = s;
 		this.gson = new Gson();
 		if(dos==null)
 		{
 		  try
 		  {
 			dos = new DataOutputStream(new BufferedOutputStream(
-					s.getOutputStream()));
+					ma.getS().getOutputStream()));
 		  } 
 		  catch (IOException e) 
 		  {
@@ -44,7 +39,7 @@ public class SendThread  implements Runnable
 	{
 			try 
 			{
-				dos.writeUTF(gson.toJson(message));
+				dos.writeUTF(gson.toJson(ma.getMyMessage()));
 				dos.flush();
 			} 
 			catch (IOException e) 
@@ -54,6 +49,6 @@ public class SendThread  implements Runnable
 			
 			MainActivity.hMain.sendMessage(
 					MainActivity.hMain.obtainMessage(
-							MainActivity.HANDLER_KEYSEND, /*ma.getUserName() +*/ "You: " + message.getText()));
+							MainActivity.HANDLER_KEYSEND, /*ma.getUserName() +*/ "You: " + ma.getMyMessage().getText()));
 	}
 }

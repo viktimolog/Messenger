@@ -17,16 +17,14 @@ import android.widget.Toast;
 public class GetThread implements Runnable
 {
 	private MainActivity ma;
-	private Socket s;
 	private MyMessage message;
 	private String str;
 	private Gson gson;
 	private DataInputStream dis;
 	
-	public GetThread(MainActivity ma, Socket s)
+	public GetThread(MainActivity ma)
 	{
 		this.ma = ma;
-		this.s = s;
 		this.message = new MyMessage();
 		gson = new Gson();
 		str=null;
@@ -35,7 +33,6 @@ public class GetThread implements Runnable
 		{
 		  try
 		  {
-			  //dis = new DataInputStream(new BufferedInputStream(s.getInputStream()));
 			dis = new DataInputStream(new BufferedInputStream(ma.getS().getInputStream()));
 		  } 
 		  catch (IOException e) 

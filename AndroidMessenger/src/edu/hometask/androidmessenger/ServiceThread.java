@@ -18,8 +18,8 @@ import com.google.gson.Gson;
 
 public class ServiceThread implements Runnable
 {
-	private NotificationManager nm;
 	private MyMessage message;
+	private MainActivity ma;
 	private DataOutputStream dos;
 	private DataInputStream dis;
 	private Socket s;
@@ -28,10 +28,11 @@ public class ServiceThread implements Runnable
 	private GetMessageService serv;
 	
 //	public ServiceThread(DataInputStream dis, DataOutputStream dos, MyMessage message)
-	public ServiceThread(GetMessageService serv, MyMessage message)
+	public ServiceThread(GetMessageService serv, MainActivity ma, MyMessage message)
 	{
-		this.serv = serv;
 		this.message = message;
+		this.serv = serv;
+		this.ma = ma;
 		str=null;
 		this.gson = new Gson();
 	}
@@ -42,9 +43,7 @@ public class ServiceThread implements Runnable
 //		message.setFrom("second");
         try
 		{
-//        	IPServer = "192.168.1.104";
-        	IPServer = "10.1.100.78";
-			s = new Socket(IPServer.toString(),3571);
+        	s = new Socket(ma.getIPServer().toString(),3571);
 			dis = new DataInputStream(new BufferedInputStream(s.getInputStream()));
 			dos = new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
 			dos.writeUTF(gson.toJson(message));
