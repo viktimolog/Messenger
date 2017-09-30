@@ -12,25 +12,27 @@ import com.google.gson.Gson;
 
 public class CreateSocketThread implements Runnable
 {
+	private Connection con;
 	private DataOutputStream dos;
-	private Socket s;
+//	private Socket s;
 	private Gson gson;
-	private MainActivity ma;
 	
-	public CreateSocketThread(MainActivity ma)
+	public CreateSocketThread(Connection con)
 	{
-		this.ma = ma;
+		this.con = con;
 		this.gson = new Gson();
 	}
 
 	@Override
 	public void run() 
 	{
+		con.addNewUserNameToDB();
+		con.addNewIpServerToDB();
         try
 		{
-			s = new Socket(ma.getIPServer().toString(),3571);
-			dos = new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
-			dos.writeUTF(gson.toJson(ma.getMyMessage()));
+			con.setS(new Socket(con.getIPServer().toString(),3571));
+			dos = new DataOutputStream(new BufferedOutputStream(con.getS().getOutputStream()));
+			dos.writeUTF(gson.toJson(con.getMessage()));
 			dos.flush();
 		}
 		catch (IOException e)
@@ -39,7 +41,7 @@ public class CreateSocketThread implements Runnable
 		}
         MainActivity.hMain.sendMessage(
 				MainActivity.hMain.obtainMessage(
-						MainActivity.HANDLER_KEYCREATESOCKET, s));
+						MainActivity.HANDLER_KEYCREATESOCKET, con.getS()));
 	}
 
 }

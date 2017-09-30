@@ -7,7 +7,8 @@
     <string name="serverchoicetitle">Input IP of server:</string>
     <string name="namechoicetitle">Input your name:</string>
     <string name="newServer">New Server</string>
-    <string name="oldServer">Old Server</string>
-    <string name="OK">OK</string>
+    <string name="oldServer">Last Server</string>
+    <string name="newName">OK</string>
+    <string name="oldName">Old Name</string>
 
 </resources>

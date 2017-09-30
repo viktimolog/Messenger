@@ -13,20 +13,20 @@ import android.widget.Toast;
 
 public class SendThread  implements Runnable
 {
+	private Connection con;
 	private DataOutputStream dos;
 	private Gson gson;
-	private MainActivity ma;
 	
-	public SendThread(MainActivity ma)
+	public SendThread(Connection con)
 	{
-		this.ma = ma;
+		this.con = con;
 		this.gson = new Gson();
 		if(dos==null)
 		{
 		  try
 		  {
 			dos = new DataOutputStream(new BufferedOutputStream(
-					ma.getS().getOutputStream()));
+					con.getS().getOutputStream()));
 		  } 
 		  catch (IOException e) 
 		  {
@@ -39,16 +39,22 @@ public class SendThread  implements Runnable
 	{
 			try 
 			{
-				dos.writeUTF(gson.toJson(ma.getMyMessage()));
+				dos.writeUTF(gson.toJson(con.getMessage()));
 				dos.flush();
 			} 
 			catch (IOException e) 
 			{
 				e.printStackTrace();
 			}
+			String str = con.getMessage().getFrom() + " (" + con.getMessage().getCurrentDateTime() + ")\n"+con.getMessage().getText();
+			
+			con.getMessage().setText(con.getMessage().getFrom()+" to "+ con.getMessage().getTo()+" (" + con.getMessage().getCurrentDateTime() + ")\n"+con.getMessage().getText());
+			
+			con.addNewHistoryToDB();
 			
 			MainActivity.hMain.sendMessage(
 					MainActivity.hMain.obtainMessage(
-							MainActivity.HANDLER_KEYSEND, /*ma.getUserName() +*/ "You: " + ma.getMyMessage().getText()));
+//							MainActivity.HANDLER_KEYSEND, "You: " + con.getMessage().getText()));
+							MainActivity.HANDLER_KEYSEND, con.getMessage().getText()));
 	}
 }

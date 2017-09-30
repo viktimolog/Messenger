@@ -101,6 +101,15 @@ public class ThreadsServer implements Runnable
 				
 				myMessage = gson.fromJson(chat, MyMessage.class);
 				
+				try 
+				{
+					Thread.sleep(100);
+				}
+				catch (InterruptedException e)
+				{
+					e.printStackTrace();
+				}
+				
 				if(myMessage.getTo().equals("server")&&myMessage.getText().equals("exit"))//выход клиента, убрать сокет из коллекции
 				{
 					System.out.println("Зашло в server-exit");

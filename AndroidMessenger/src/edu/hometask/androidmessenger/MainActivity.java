@@ -14,10 +14,15 @@ import java.util.Collections;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.pm.ActivityInfo;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -29,7 +34,9 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.ListView;
+import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,24 +59,71 @@ public static final int CODE_1 = 173726;
 	
 	static Handler hMain;
 	
-	private Socket s;
-	private String IPServer, userName, newMessage;
+//	private Socket s;
+	private String /*IPServer, userName,*/ newMessage;
 	private DataInputStream dis;
 	private DataOutputStream dos;
 	private SharedPreferences sp;
-	private MyMessage myMessage;
 	private Gson gson;
+	private Connection con;
 	
 	private Contacts contacts;
 	private ArrayList<String> arrListContacts;
 	private ArrayAdapter<String> adapterContacts;
 	
-	private ArrayList<String> arrListHistory;
+//	private ArrayList<String> arrListHistory;
 	private ArrayAdapter<String> adapterHistory;
 	
 	EditText etInput, etServerName, etUserName;
 	ListView lvHistory, lvContacts;
 	Button btnSend;
+
+	private AlertDialog ad1;
+
+	private AlertDialog ad;
+	
+	
+	private SQLiteConnector connector;
+	private SQLiteDatabase db;
+	
+	private class SQLiteConnector extends SQLiteOpenHelper
+	{
+
+		public SQLiteConnector(Context context, String name, int version)
+		{
+			super(context, name, null, version);
+		}
+
+		@Override
+		public void onCreate(SQLiteDatabase db)
+		{
+			
+			db.execSQL("create table ipserver (_id integer primary key autoincrement, ipServer varchar(25))");
+			
+			db.execSQL("create table username (_id integer primary key autoincrement, userName varchar(25))");
+			
+			db.execSQL("create table history (_id integer primary key autoincrement, idUser integer, history varchar(255))");
+			//TODO
+		}
+
+		@Override
+		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion)
+		{
+			//все возможные варианты
+			if(oldVersion==1 && newVersion==2)
+			{
+//				alterTable etc
+			}
+			else if(oldVersion==2 && newVersion==3)
+			{
+				
+			}
+			else if(oldVersion==1 && newVersion==3)
+			{
+				
+			}
+		}
+	}
 
 	static class MyHandler extends Handler
     {
@@ -88,7 +142,10 @@ public static final int CODE_1 = 173726;
 				MainActivity ma = wrActivity.get();
 				if(ma!=null)
 				{
-					ma.setIPServer(msg.obj.toString());
+					ma.con.setIPServer(msg.obj.toString());
+					
+					ma.dialogInputName();
+//					ma.setIPServer(msg.obj.toString());
 					//Toast.makeText(ma, ma.getIPServer(), Toast.LENGTH_LONG).show();
 				}
 			}
@@ -97,14 +154,13 @@ public static final int CODE_1 = 173726;
 				MainActivity ma = wrActivity.get();
 				if(ma!=null)
 				{
-					ma.setUserName(msg.obj.toString());
-					
-					ma.myMessage.setFrom(ma.userName);
-					ma.myMessage.setTo("server");
-					ma.myMessage.setText("regusername");
+					ma.con.setUserName(msg.obj.toString());
+					ma.con.getMessage().setFrom(ma.con.getUserName());
+					ma.con.getMessage().setTo("server");
+					ma.con.getMessage().setText("regusername");
 				    
 				    //Первое подключение к серверу
-				    new Thread(new CreateSocketThread(ma)).start(); //TODO переделать: куча параметров нах
+				    new Thread(new CreateSocketThread(ma.con)).start(); 
 				}
 			}
 			if(msg.what==MainActivity.HANDLER_KEYSEND)
@@ -114,9 +170,9 @@ public static final int CODE_1 = 173726;
 				{
 					ma.etInput.setText("");
 					
-					ma.arrListHistory.add(msg.obj.toString());
+					ma.con.getArrListHistory().add(msg.obj.toString());
 					
-					ma.adapterHistory = new ArrayAdapter<String>(ma,android.R.layout.simple_list_item_1, ma.arrListHistory);//здесь не надо почему-то
+					ma.adapterHistory = new ArrayAdapter<String>(ma,android.R.layout.simple_list_item_1, ma.con.getArrListHistory());//здесь не надо почему-то
 					
 			        ma.lvHistory.setAdapter(ma.adapterHistory);//обязательно, без него не работает
 				}
@@ -133,9 +189,9 @@ public static final int CODE_1 = 173726;
 					
 					for (int i=0; i<ma.arrListContacts.size(); i++) 
 					{
-						if(ma.arrListContacts.get(i).equals(ma.userName))
+						if(ma.arrListContacts.get(i).equals(ma.con.getUserName()))
 						{
-							ma.arrListContacts.remove(i);//TODO убрали самого себя
+							ma.arrListContacts.remove(i);//убрали самого себя
 						}
 					}
 					
@@ -154,6 +210,9 @@ public static final int CODE_1 = 173726;
 				                getItemId(0));
 			        }
 			        
+			        ma.con.getHistoryFromDB();
+			        ma.lvHistory.setAdapter(ma.adapterHistory);//обязательно, без него не работает
+			        
 			        
 			        //ma.lvContacts.setBackgroundColor(5); не работает
 			        
@@ -165,20 +224,74 @@ public static final int CODE_1 = 173726;
 				MainActivity ma = wrActivity.get();
 				if(ma!=null)
 				{
-					ma.s = (Socket) msg.obj;
-					new Thread(new GetThread(ma)).start(); // TODO много параметров 
+//					ma.s = (Socket) msg.obj;
+					new Thread(new GetThread(ma.con)).start(); 
 				}
 			}
 		}
     }
 	
+	public void dialogInputName()//TODO 
+	{
+		   View viewName = View.inflate(this, R.layout.namechoice, null);
+		    AlertDialog.Builder alertName = new AlertDialog.Builder(MainActivity.this);
+		    alertName.setView(viewName);
+		    alertName.setTitle(R.string.namechoicetitle);
+//		    alertName.setMessage(R.string.personName);
+		    alertName.setCancelable(false);
+		    
+		    etUserName = (EditText) viewName.findViewById(R.id.dialog1EditText);
+		    
+		    alertName.setPositiveButton(R.string.newName, new DialogInterface.OnClickListener()
+	        {
+				@Override
+				public void onClick(DialogInterface dialog, int which)
+				{
+					con.setUserName(etUserName.getText().toString());
+					
+					MainActivity.hMain.sendMessage(
+							MainActivity.hMain.obtainMessage(
+									MainActivity.HANDLER_KEYUSERNAME, con.getUserName()));
+					
+					dialog.cancel();
+					
+				}
+			});
+		    
+		/*    alertName.setNegativeButton(R.string.oldName, new DialogInterface.OnClickListener()
+	        {
+				@Override
+				public void onClick(DialogInterface dialog, int which)
+				{
+					con.returnLastUserNameFromDB();
+					
+					MainActivity.hMain.sendMessage(
+							MainActivity.hMain.obtainMessage(
+									MainActivity.HANDLER_KEYUSERNAME, con.getUserName()));
+					dialog.cancel();
+				}
+			});*/
+		    
+		    ad1 = alertName.create();
+		    
+		    ad1.show();
+	}
 	
+	
+	public Connection getCon() 
+	{
+		return con;
+	}
 
-	
-	public ArrayList<String> getArrListHistory() 
+	public void setCon(Connection con)
+	{
+		this.con = con;
+	}
+
+/*	public ArrayList<String> getArrListHistory() 
 	{
 		return arrListHistory;
-	}
+	}*/
 
 	public ArrayList<String> getArrListContacts()
 	{
@@ -209,45 +322,6 @@ public static final int CODE_1 = 173726;
 		this.dis = dis;
 	}
 
-	public Socket getS()
-	{
-		return s;
-	}
-
-	public void setS(Socket s)
-	{
-		this.s = s;
-	}
-
-	public MyMessage getMyMessage() 
-	{
-		return myMessage;
-	}
-
-	public void setMyMessage(MyMessage myMessage)
-	{
-		this.myMessage = myMessage;
-	}
-	
-	public void setUserName(String txt)
-    {
-    	userName = txt;
-    }
-	
-	public String getUserName()
-    {
-    	return userName;
-    }
-	public void setIPServer(String txt)
-	{
-		IPServer = txt;
-	}
-	
-	public String getIPServer()
-	{
-		return IPServer;
-	}
-	
     public void setEtInputText(String txt)
     {
     	etInput.setText(txt);
@@ -261,21 +335,16 @@ public static final int CODE_1 = 173726;
 	@Override
 	protected void onDestroy()
 	{
+		con.getMessage().setFrom(con.getUserName());
+		con.getMessage().setText("exit");
+		con.getMessage().setTo("server");
 		
-		if(myMessage==null) myMessage = new MyMessage();
-		
-		myMessage.setFrom(userName);
-		myMessage.setText("exit");
-		myMessage.setTo("server");
-		
-		new Thread(new SendThread(MainActivity.this)).start();
+		new Thread(new SendThread(con)).start();
 				
-			Log.d("MyTag", "String after Send evit to server");
+			Log.d("MyTag", "String after Send exit to server");
 		
-		
-		//startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, userName));
-		startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, gson.toJson(MainActivity.this)));
-		
+		startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, con.getUserName()));
+	
 		if(hMain!=null) hMain.removeCallbacksAndMessages(null);//очищает отправленные с задержкой сообщения
 		super.onDestroy();
 	}
@@ -286,19 +355,18 @@ public static final int CODE_1 = 173726;
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+//        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         
-        IPServer = "192.168.1.104";
+		connector = new SQLiteConnector(this, "edu.hometask.androidmessenger.Messenger", 1);
+		db = connector.getWritableDatabase();
         
-        s=null;
-        myMessage=new MyMessage();
+       	con = new Connection(new MyMessage(), null,"", "", 3571,db);
+        
         gson = new Gson();
-        
-        //userName = "second";
         
         hMain = new MyHandler(this);
         
-        arrListHistory = new ArrayList<String>();
+//        arrListHistory = new ArrayList<String>();
         arrListContacts = new ArrayList<String>();
         
         lvContacts = (ListView) findViewById(R.id.lvContacts);
@@ -306,7 +374,7 @@ public static final int CODE_1 = 173726;
         etInput = (EditText) findViewById(R.id.etInput);
         btnSend = (Button) findViewById(R.id.btnSend);
         
-        adapterHistory = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, arrListHistory);
+        adapterHistory = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, con.getArrListHistory());
         
         lvHistory.setAdapter(adapterHistory);
         
@@ -320,7 +388,7 @@ public static final int CODE_1 = 173726;
     		@Override
     		public void onItemClick(AdapterView<?> parent, View itemClicked, int position, long id) 
     		{
-    			etInput.setText(((TextView) itemClicked).getText()+": ");
+    			//etInput.setText(((TextView) itemClicked).getText()+": ");
     			etInput.setSelection(etInput.getText().length());
     			
     			/*Toast.makeText(getApplicationContext(), ((TextView) itemClicked).getText(),
@@ -333,20 +401,16 @@ public static final int CODE_1 = 173726;
 			@Override
 			public void onClick(View v) 
 			{
-				myMessage.setFrom(userName);
-				myMessage.setText(etInput.getText().toString());
-				//myMessage.setTo("first");//шлет юзеру с таким именем TODO
 				
-				myMessage.setTo(arrListContacts.get(lvContacts.getCheckedItemPosition()));//OK
+				con.getMessage().setText(etInput.getText().toString());
 				
+				con.getMessage().setTo(arrListContacts.get(lvContacts.getCheckedItemPosition()));//OK
 				
-				//myMessage.setTo(userName);//чтобы сам себе отправлял userName
-				
-				new Thread(new SendThread(MainActivity.this)).start();
+				new Thread(new SendThread(con)).start();
 			}
 		});
         
-  /*      View view = View.inflate(this, R.layout.serverchoice, null);
+        View view = View.inflate(this, R.layout.serverchoice, null);
 	    AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
 	    alert.setView(view);
 	    alert.setTitle(R.string.serverchoicetitle);
@@ -359,17 +423,17 @@ public static final int CODE_1 = 173726;
 			@Override
 			public void onClick(DialogInterface dialog, int which)
 			{
-				IPServer = etServerName.getText().toString();
+				con.setIPServer(etServerName.getText().toString());
 				
 				MainActivity.hMain.sendMessage(
 						MainActivity.hMain.obtainMessage(
-								MainActivity.HANDLER_KEYSERVER, IPServer));
+								MainActivity.HANDLER_KEYSERVER, con.getIPServer()));
 				
 				dialog.cancel();
 				
 				sp = getSharedPreferences("SelectedServer", MODE_PRIVATE);
 				Editor edit = sp.edit();
-				edit.putString(MainActivity.SPKEY, IPServer);
+				edit.putString(MainActivity.SPKEY, con.getIPServer());
 				edit.commit();
 			}
 		});
@@ -379,52 +443,22 @@ public static final int CODE_1 = 173726;
 			@Override
 			public void onClick(DialogInterface dialog, int which)
 			{
-				sp = getSharedPreferences("SelectedServer", MODE_PRIVATE);
-				IPServer = sp.getString(MainActivity.SPKEY, "");
-				//Toast.makeText(getApplicationContext(), IPServer, Toast.LENGTH_LONG).show();
-			}
-		});
-	    
-	    AlertDialog ad = alert.create();
-	    ad.show();*/
-	    
-        View viewName = View.inflate(this, R.layout.namechoice, null);
-	    AlertDialog.Builder alertName = new AlertDialog.Builder(MainActivity.this);
-	    alertName.setView(viewName);
-	    alertName.setTitle(R.string.namechoicetitle);
-//	    alertName.setMessage(R.string.personName);
-	    alertName.setCancelable(false);
-	    
-	    etUserName = (EditText) viewName.findViewById(R.id.dialog1EditText);
-	    
-	    alertName.setPositiveButton(R.string.OK, new DialogInterface.OnClickListener()
-        {
-			@Override
-			public void onClick(DialogInterface dialog, int which)
-			{
-				userName = etUserName.getText().toString();
+				/*sp = getSharedPreferences("SelectedServer", MODE_PRIVATE);
+				con.setIPServer(sp.getString(MainActivity.SPKEY, ""));*/
 				
-				//userName = "first";//TODO
-				//userName = "second";
+				con.returnLastIpServerFromDB();
 				
 				MainActivity.hMain.sendMessage(
 						MainActivity.hMain.obtainMessage(
-								MainActivity.HANDLER_KEYUSERNAME, userName));
-				
+								MainActivity.HANDLER_KEYSERVER, con.getIPServer()));
 				dialog.cancel();
-				
-			/*	sp = getSharedPreferences("SelectedServer", MODE_PRIVATE);
-				Editor edit = sp.edit();
-				edit.putString(MainActivity.KEY, IPServer);
-				edit.commit();*/
-				
-//				  Toast.makeText(getApplicationContext(), IPServer, Toast.LENGTH_LONG).show();
 			}
 		});
 	    
-	    AlertDialog ad1 = alertName.create();
+	    ad = alert.create();
+	    ad.show();
 	    
-	    ad1.show();
+     
 	    
 	    Intent intent = getIntent();
 	    
@@ -440,16 +474,17 @@ public static final int CODE_1 = 173726;
 			
 			new Thread(new SendThread(MainActivity.this,s,myMessage)).start();//убиваем сокет созданный сервисом  s = nullpointer!!! TODO*/
 	    	
-	    	ad1.cancel();
+	    	ad.cancel();//закрытие диалога с IP сервера
+	    	ad1.cancel();//закрытие диалога с неймом
 	    	stopService(new Intent(this, GetMessageService.class));
 	    	
-	    	myMessage.setFrom(userName);
-			myMessage.setTo("server");
-			myMessage.setText("regusername");
+//	    	myMessage.setFrom(userName);
+			con.getMessage().setTo("server");
+			con.getMessage().setText("regusername");
 			
-			arrListHistory.add(gson.fromJson(newMessage, MyMessage.class).getText());
+			con.getArrListHistory().add(gson.fromJson(newMessage, MyMessage.class).getText());
 			
-		    new Thread(new CreateSocketThread(this)).start(); 
+		    new Thread(new CreateSocketThread(con)).start(); 
 	    	
 	    }
 	    

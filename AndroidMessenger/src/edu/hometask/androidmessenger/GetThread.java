@@ -16,15 +16,15 @@ import android.widget.Toast;
 
 public class GetThread implements Runnable
 {
-	private MainActivity ma;
+	private Connection con;
 	private MyMessage message;
 	private String str;
 	private Gson gson;
 	private DataInputStream dis;
 	
-	public GetThread(MainActivity ma)
+	public GetThread(Connection con)
 	{
-		this.ma = ma;
+		this.con = con;
 		this.message = new MyMessage();
 		gson = new Gson();
 		str=null;
@@ -33,7 +33,7 @@ public class GetThread implements Runnable
 		{
 		  try
 		  {
-			dis = new DataInputStream(new BufferedInputStream(ma.getS().getInputStream()));
+			dis = new DataInputStream(new BufferedInputStream(con.getS().getInputStream()));
 		  } 
 		  catch (IOException e) 
 		  {
@@ -55,19 +55,19 @@ public class GetThread implements Runnable
 				MainActivity.hMain.sendMessage(
 						MainActivity.hMain.obtainMessage(
 									MainActivity.HANDLER_KEYCONTACTS, str));//отобразить контакты
-				
 			}
 			
 			else
 			{
-				str=message.getFrom() + ": "+message.getText();
-			
-			//message.setText(str);
-			
+			//	str=message.getFrom() + " (" + message.getCurrentDateTime() + ")\n"+message.getText();
+				message.setText(message.getFrom()+" to "+ message.getTo() + " (" + message.getCurrentDateTime() + ")\n"+message.getText());
+				
+				con.getMessage().setText(message.getText());//TODO страшно, в хистори хня попасть может
+				con.addNewHistoryToDB();
+				
 			MainActivity.hMain.sendMessage(
 					MainActivity.hMain.obtainMessage(
-							//MainActivity.HANDLER_KEYSEND, message.getText()));
-								MainActivity.HANDLER_KEYSEND, str));//отобразить в хистори от кого пришло и что
+								MainActivity.HANDLER_KEYSEND, message.getText()));//отобразить в хистори от кого пришло и что
 			}
 		}
 	} 
