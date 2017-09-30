@@ -126,12 +126,12 @@ public void setStr(String str)
   {
 	  Log.d("Shalom", "str in sendNotifActual = " + str);
 	  
-		message = (new Gson()).fromJson(str, MyMessage.class);
+		message = gson.fromJson(str, MyMessage.class);
 		str=message.getFrom() + ": "+message.getText();
 		message.setText(str);
 		
 	    Intent intent = new Intent(this, MainActivity.class);
-	    intent.putExtra(MainActivity.MESSAGE, (new Gson()).toJson(message));
+	    intent.putExtra(MainActivity.MESSAGE, gson.toJson(message));
 	    PendingIntent pIntent = PendingIntent.getActivity(this, 0, intent, 0);
 	    
 	    Notification notif = new Notification.Builder(getBaseContext())

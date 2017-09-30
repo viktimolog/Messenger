@@ -257,7 +257,7 @@ public static final int CODE_1 = 173726;
 					
 				}
 			});
-		    
+		    //выбрать последнее зарегеное имя
 		/*    alertName.setNegativeButton(R.string.oldName, new DialogInterface.OnClickListener()
 	        {
 				@Override
@@ -333,15 +333,15 @@ public static final int CODE_1 = 173726;
     }
 
 	@Override
-	protected void onDestroy()
+	protected void onDestroy()//TODO
 	{
 		con.getMessage().setFrom(con.getUserName());
 		con.getMessage().setText("exit");
 		con.getMessage().setTo("server");
 		
-		new Thread(new SendThread(con)).start();
+		new Thread(new SendThread(con)).start();//отправляем серверу чтобы закрыл сокет
 				
-			Log.d("MyTag", "String after Send exit to server");
+//			Log.d("MyTag", "String after Send exit to server");
 		
 		startService(new Intent(this, GetMessageService.class).putExtra(MainActivity.StoService, con.getUserName()));
 	
@@ -472,17 +472,30 @@ public static final int CODE_1 = 173726;
 			myMessage.setText("exit");
 			myMessage.setTo("server");
 			
-			new Thread(new SendThread(MainActivity.this,s,myMessage)).start();//убиваем сокет созданный сервисом  s = nullpointer!!! TODO*/
+			new Thread(new SendThread(MainActivity.this,s,myMessage)).start();
+			//убиваем сокет созданный сервисом  s = nullpointer!!! TODO*/
 	    	
 	    	ad.cancel();//закрытие диалога с IP сервера
-	    	ad1.cancel();//закрытие диалога с неймом
+//	    	ad1.cancel();//он не стартует, он внутри ad
 	    	stopService(new Intent(this, GetMessageService.class));
 	    	
-//	    	myMessage.setFrom(userName);
+	    	gson = new Gson();
+	    	
+	    	con = new Connection(new MyMessage(), null,"", "", 3571,db);
+	    	
+	    	con.returnLastIpServerFromDB();
+	    	
+//	    	con.getMessage().setText(gson.fromJson(newMessage, MyMessage.class).getText());
+	    	
+	    	con.setMessage(gson.fromJson(newMessage, MyMessage.class));
+	    	
+	    	con.setUserName(con.getMessage().getTo());//мне шло из нотифи
+	    	
+	    	//con.addNewHistoryToDB();
+	    	
+	    	con.getMessage().setFrom(con.getUserName());
 			con.getMessage().setTo("server");
 			con.getMessage().setText("regusername");
-			
-			con.getArrListHistory().add(gson.fromJson(newMessage, MyMessage.class).getText());
 			
 		    new Thread(new CreateSocketThread(con)).start(); 
 	    	

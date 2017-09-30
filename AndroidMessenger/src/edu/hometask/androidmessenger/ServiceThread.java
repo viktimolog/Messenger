@@ -58,6 +58,7 @@ public class ServiceThread implements Runnable
 	@Override
 	public void run() 
 	{
+		con.returnLastIpServerFromDB();
         try
 		{
         	con.setS(new Socket(con.getIPServer().toString(),3571));
